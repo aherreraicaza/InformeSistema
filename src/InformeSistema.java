@@ -2,7 +2,6 @@
 // Antuan Herrera Icaza - DAM2
 // PSP: radiografia del sistema: procesadores, memoria, sistema y propiedades.
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,10 +35,11 @@ public class InformeSistema {
 
         line("SISTEMA");
         System.out.println("os.name: " + System.getProperty("os.name"));
-        System.out.println("file.separator: \"" + File.separator + "\"");
+        String separador = System.getProperty("file.separator");
+        System.out.println("file.separator: \"" + separador + "\"");
         System.out.println("Ruta construida con las propiedades:");
         System.out.println(System.getProperty("user.home")
-                + File.separator + "psp" + File.separator + "informe.txt");
+                + separador + "psp" + separador + "informe.txt");
 
         String[] prefijos = args.length > 0 ? args : new String[]{"os.", "user.", "java.version"};
         line("PROPIEDADES QUE EMPIEZAN POR " + String.join(", ", prefijos));

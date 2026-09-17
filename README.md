@@ -37,7 +37,9 @@ Captura:
 
 Sale el proceso `java ... InformeSistema` con **PID 16057** y **PPID 16054**. El proceso padre es el **bash** del terminal, que es lo normal: cuando escribes `java InformeSistema` en una terminal, el shell es quien crea el proceso del programa y por tanto es su padre.
 
-También lo lancé **desde el IDE** (IntelliJ): ahí el PPID ya no es un shell. Quien lanza el programa es el propio IntelliJ, así que el proceso pasa a ser hijo del IDE. Por eso **el PPID cambia según desde dónde se lance** (terminal → bash, IDE → IntelliJ). La captura de esa segunda búsqueda la dejé en `capturas/ps_ide.png`.
+También hay que repetir la prueba desde el IDE (IntelliJ). En esa ejecución el PPID ya no será el shell del terminal: el proceso que lance el IDE será el padre del programa. Por eso el PPID cambia según desde dónde se lance (terminal → bash; IDE → proceso del IDE o su lanzador).
+
+> Pendiente antes de entregar: ejecutar desde IntelliJ, localizar el proceso mientras espera y guardar/añadir la captura como `capturas/ps_ide.png`. No se debe afirmar que existe esa captura hasta haberla añadido.
 
 Y repetí la búsqueda mientras ejecutaba con `-Xmx128m`:
 
