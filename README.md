@@ -1,6 +1,6 @@
 # Tarea 1 - Radiografía del sistema
 
-Antuan Herrera Icaza · CFGS DAM2 · CPR Daniel Castelao · curso 2026-2027
+Antuan Herrera Icaza ·DAM2 · CPR Daniel Castelao · curso 2026-2027
 
 ## El programa
 
