@@ -4,14 +4,14 @@ Antuan Herrera Icaza ·DAM2 · CPR Daniel Castelao · curso 2026-2027
 
 ## El programa
 
-He hecho una clase `InformeSistema` que cuando se ejecuta imprime en pantalla un montón de datos del sistema. Hace esto:
+He hecho una clase `InformeSistema` que cuando se ejecuta imprime un montón de datos del sistema por la consola. No es que controle del todo el tema de la memoria de la JVM, pero creo que con lo que pide el enunciado me apaño. Lo que hace es esto:
 
 - Cuenta los procesadores que ve la JVM (`Runtime.availableProcessors()`).
-- Mide la memoria en MiB (total reservada, libre, en uso y máxima, con su porcentaje) antes y después de reservar 64 MiB.
-- Los 64 MiB los reservo con `long[] reservado = new long[8 * 1024 * 1024];` (8 millones de long × 8 bytes = 64 MiB). Después de la segunda medición imprimo `reservado[0]` para que el recolector de basura no retire el array antes de tiempo; la primera vez que lo probé sin eso el incremento me salía 0 y no sabía por qué.
-- Detecta el sistema operativo y, con las propiedades `os.name`, `file.separator` y `user.home`, arma la ruta de un `informe.txt` dentro de una carpeta `psp` en mi carpeta personal. Nada de rutas escritas a mano.
-- Imprime las propiedades que empiecen por los prefijos que le paso por línea de comandos; si no le paso ninguno, usa `os.`, `user.` y `java.version`, y las ordena alfabéticamente.
-- Al final se queda esperando a que pulse INTRO (con un `Scanner`), para que mientras tanto lo pueda localizar desde otra ventana.
+- Mide la memoria en MiB por partes: total reservada, libre, en uso y máxima con su porcentaje. Lo hace antes y después de reservar 64 MiB.
+- Los 64 MiB los reservo con `long[] reservado = new long[8 * 1024 * 1024];` (8 millones de long × 8 bytes = 64 MiB). Después de la segunda medición imprimo `reservado[0]` para que el recolector de basura no retire el array antes de tiempo. La primera vez se me olvidó eso y el incremento me salía 0, tardé un rato en darme cuenta de por qué. Al final lo busqué y ahí estaba la explicación.
+- Detecta el sistema operativo y, con `os.name`, `file.separator` y `user.home`, arma la ruta de un `informe.txt` dentro de una carpeta `psp` en mi carpeta personal. Ninguna ruta está escrita a mano, que es lo que creo que se pide.
+- Imprime las propiedades que empiecen por los prefijos que le paso por línea de comandos; si no le paso ninguno, usa `os.`, `user.` y `java.version`. Las ordena alfabéticamente.
+- Al final se queda esperando a que pulse INTRO (con un `Scanner`), para poder localizarlo mientras tanto desde otra ventana. Esto lo añadí porque no se me ocurría otra forma de pillarlo en marcha.
 
 Esta es la salida de una ejecución normal, tal cual:
 
@@ -63,11 +63,11 @@ Fin del programa.
 
 ## Las dos ejecuciones
 
-Primero lo ejecuté normal, desde IntelliJ con la configuración por defecto:
+Primero lo ejecuté normal, desde IntelliJ con la configuración que viene por defecto:
 
 ![Ejecución normal](capturas/eje_normal_espera.png)
 
-Y después con la memoria limitada. Me hice una configuración de ejecución llamada `InformeSistema128m` en IntelliJ con la opción de VM `-Xmx128m` y la lancé lo mismo:
+Después con la memoria limitada. Me hice una configuración de ejecución llamada `InformeSistema128m` en IntelliJ con la opción de VM `-Xmx128m` y la lancé igual que la otra:
 
 ![Ejecución con -Xmx128m](capturas/eje_128_espera.png)
 
@@ -87,13 +87,13 @@ Con el programa en espera y ejecutándolo desde IntelliJ, esto es lo que sale:
 
 ![ps desde el IDE](capturas/ps_ide.png)
 
-El proceso era el PID 26768 y el padre el PID 5136, `idea64`, o sea IntelliJ. Tiene lógica: cuando pulso Run, es IntelliJ el que crea el proceso `java` con mi clase, por eso el padre es suyo. En la línea de comandos no hay ningún `-Xmx`, va con lo que la JVM decide por defecto (4056 MiB).
+El proceso era el PID 26768 y el padre el PID 5136, `idea64`, o sea IntelliJ. Tiene lógica: cuando le doy a Run, es IntelliJ el que crea el proceso `java` con mi clase, por eso el padre es suyo. En la línea de comandos no hay ningún `-Xmx`, va con lo que la JVM decide por defecto (4056 MiB).
 
 Con la configuración `-Xmx128m`, también desde el IDE:
 
 ![ps con -Xmx128m](capturas/ps_128m.png)
 
-El PID era 17700 (cambia en cada ejecución, cada vez es un proceso nuevo) y el padre otra vez el 5136 (`idea64`), porque también lo creó IntelliJ. Aquí sí se ve el `-Xmx128m` en la línea de comandos.
+El PID era 17700 (cambia en cada ejecución, cada vez es un proceso nuevo) y el padre otra vez el 5136 (`idea64`), porque también lo creó IntelliJ. Aquí sí se ve el `-Xmx128m` en la línea de comandos. Me pasó una cosa con esta prueba: la primera vez que ejecuté la de 128 no veía el `-Xmx128m` por ningún lado en la lista de procesos, y era porque sin querer se la estaba aplicando a la configuración equivocada en IntelliJ. Hasta que me di cuenta de cuál era la seleccionada no salía bien.
 
 Y lanzándolo directamente desde PowerShell, sin tocar el IDE:
 
@@ -115,7 +115,7 @@ Comparando las dos ejecuciones:
 | Máxima (-Xmx) | 4056 MiB | 128 MiB |
 | Incremento en uso | 66 MiB | 63 MiB |
 
-Lo que cambia es la **máxima**: con `-Xmx128m` le digo a la JVM que como mucho reserve 128 MiB, y sin la opción la máxima la pone ella (4056 MiB). La **total reservada** baja también (254 → 128) porque con el tope en 128 la JVM no puede reservar más. La **libre** y la de **en uso** cambian por lo mismo y porque el array de 64 MiB ocupa sitio. El porcentaje sube mucho más con 128 MiB: el mismo array de 64 MiB es el 52 % de un heap de 128 y solo el 27 % de uno de 254. El **incremento** sale parecido (66 y 63 MiB) porque en los dos casos reservo lo mismo; la diferencia de un par de megas es lo que la JVM gasta en sus cosas al arrancar.
+Lo que cambia es la **máxima**: con `-Xmx128m` le digo a la JVM que como mucho reserve 128 MiB, y sin la opción la máxima la pone ella (4056 MiB). La **total reservada** baja también (254 → 128) porque con el tope en 128 la JVM no puede reservar más. La **libre** y la de **en uso** cambian por lo mismo y porque el array de 64 MiB ocupa sitio (no sé si me explico con esto, pero se ve bien en los números). El porcentaje sube mucho más con 128 MiB: el mismo array de 64 MiB es el 52 % de un heap de 128 y solo el 27 % de uno de 254. El **incremento** sale parecido (66 y 63 MiB) porque en los dos casos reservo lo mismo; la diferencia de un par de megas es lo que la JVM gasta en sus cosas al arrancar, creo yo.
 
 ## La ruta multiplataforma
 
@@ -149,7 +149,7 @@ Programación **concurrente**. Son dos tareas del mismo móvil que coexisten: la
 
 **d) Un cálculo que no cabe en la RAM de un solo equipo.**
 
-Programación **distribuida**. Si los datos no caben en la memoria de una máquina, no sirve de nada repartir hilos entre los núcleos del mismo equipo: te sigues quedando sin RAM. Los datos se reparten entre varias máquinas conectadas por red, cada una con su memoria, que se comunican por mensajes. El inconveniente: la red es mucho más lenta que la memoria local, así que hay que dividir bien el problema para que los nodos no se estén pasando datos todo el rato, y además asumir que algún nodo puede fallar.
+Programación **distribuida**. Si los datos no caben en la memoria de una máquina, no sirve de nada repartir hilos entre los núcleos del mismo equipo: te sigues quedando sin RAM. Los datos se reparten entre varias máquinas conectadas por red, cada una con su memoria, que se comunican por mensajes. El inconveniente: la red es mucho más lenta que la memoria local, así que hay que dividir bien el problema para que los nodos no se estén pasando datos todo el rato, y además asumir que algún nodo puede fallar. Esto último lo he leído por ahí, no es que lo haya probado.
 
 ## Estructura
 
