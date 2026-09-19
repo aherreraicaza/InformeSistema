@@ -1,6 +1,6 @@
 // InformeSistema.java
 // Antuan Herrera Icaza - DAM2
-// PSP: radiografia del sistema: procesadores, memoria, sistema y propiedades.
+// PSP - Tarea 1
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,45 +10,63 @@ import java.util.Scanner;
 
 public class InformeSistema {
 
-    private static final String RAYA = "==================================================";
-
     public static void main(String[] args) {
-        line("PROCESADORES");
+        System.out.println("PROCESADORES");
         System.out.println("Disponibles JVM: " + Runtime.getRuntime().availableProcessors());
-        System.out.println("(son hilos lógicos: con SMT no coinciden con los núcleos físicos)");
+        System.out.println("(son hilos logicos: con SMT no coinciden con los nucleos fisicos)");
 
         Runtime r = Runtime.getRuntime();
-        r.gc();
         long usadoAntes = r.totalMemory() - r.freeMemory();
 
-        line("MEMORIA · ANTES");
-        reportMemoria(r);
+        titulo("MEMORIA - ANTES");
+        long total = r.totalMemory();
+        long libre = r.freeMemory();
+        long usado = total - libre;
+        System.out.println("Total reservada: " + total / 1024 / 1024 + " MiB");
+        System.out.println("Libre: " + libre / 1024 / 1024 + " MiB");
+        System.out.println("En uso: " + usado / 1024 / 1024 + " MiB (" + Math.round(usado * 100.0 / total) + " % de la total)");
+        System.out.println("Maxima (-Xmx): " + r.maxMemory() / 1024 / 1024 + " MiB");
 
         long[] reservado = new long[8 * 1024 * 1024];
-        // guardo la referencia y la uso despues para que el GC no la libere antes de medir
         long usadoDespues = r.totalMemory() - r.freeMemory();
 
-        line("MEMORIA · DESPUÉS DE RESERVAR 64 MIB");
-        reportMemoria(r);
-        System.out.println("Incremento en uso: " + ((usadoDespues - usadoAntes) >> 20) + " MiB");
+        titulo("MEMORIA - DESPUES DE RESERVAR 64 MIB");
+        total = r.totalMemory();
+        libre = r.freeMemory();
+        usado = total - libre;
+        System.out.println("Total reservada: " + total / 1024 / 1024 + " MiB");
+        System.out.println("Libre: " + libre / 1024 / 1024 + " MiB");
+        System.out.println("En uso: " + usado / 1024 / 1024 + " MiB (" + Math.round(usado * 100.0 / total) + " % de la total)");
+        System.out.println("Maxima (-Xmx): " + r.maxMemory() / 1024 / 1024 + " MiB");
+        System.out.println("Incremento en uso: " + (usadoDespues - usadoAntes) / 1024 / 1024 + " MiB");
         System.out.println("(el array sigue en memoria: reservado[0] = " + reservado[0] + ")");
 
-        line("SISTEMA");
+        titulo("SISTEMA");
         System.out.println("os.name: " + System.getProperty("os.name"));
         String separador = System.getProperty("file.separator");
         System.out.println("file.separator: \"" + separador + "\"");
         System.out.println("Ruta construida con las propiedades:");
-        System.out.println(System.getProperty("user.home")
-                + separador + "psp" + separador + "informe.txt");
+        System.out.println(System.getProperty("user.home") + separador + "psp" + separador + "informe.txt");
 
-        String[] prefijos = args.length > 0 ? args : new String[]{"os.", "user.", "java.version"};
-        line("PROPIEDADES QUE EMPIEZAN POR " + String.join(", ", prefijos));
+        String[] prefijos;
+        if (args.length > 0) {
+            prefijos = args;
+        } else {
+            prefijos = new String[] { "os.", "user.", "java.version" };
+        }
+
+        String texto = "";
+        for (String prefijo : prefijos) {
+            texto = texto + prefijo + " ";
+        }
+        titulo("PROPIEDADES QUE EMPIEZAN POR " + texto);
+
         Properties props = System.getProperties();
         List<String> claves = new ArrayList<>();
         for (Object k : props.keySet()) {
             String clave = k.toString();
-            for (String pre : prefijos) {
-                if (clave.startsWith(pre)) {
+            for (String prefijo : prefijos) {
+                if (clave.startsWith(prefijo)) {
                     claves.add(clave);
                     break;
                 }
@@ -59,29 +77,18 @@ public class InformeSistema {
             System.out.println(clave + " = " + props.getProperty(clave));
         }
 
-        line("PROCESO EN ESPERA");
+        titulo("PROCESO EN ESPERA");
         System.out.println("Buscame desde otra terminal con:");
         System.out.println("ps -ef | grep InformeSistema");
         System.out.print("Pulsa INTRO para terminar... ");
-        // me quedo esperando para dar tiempo a localizar el proceso desde otra terminal
-        new Scanner(System.in).nextLine();
+        Scanner sc = new Scanner(System.in);
+        sc.nextLine();
         System.out.println("Fin del programa.");
     }
 
-    private static void reportMemoria(Runtime r) {
-        long total = r.totalMemory();
-        long libre = r.freeMemory();
-        long usado = total - libre;
-        System.out.println("Total reservada: " + (total >> 20) + " MiB");
-        System.out.println("Libre: " + (libre >> 20) + " MiB");
-        System.out.println("En uso: " + (usado >> 20) + " MiB ("
-                + Math.round(usado * 100.0 / total) + " % de la total)");
-        System.out.println("Máxima (-Xmx): " + (r.maxMemory() >> 20) + " MiB");
-    }
-
-    private static void line(String titulo) {
+    private static void titulo(String t) {
         System.out.println();
-        System.out.println(titulo);
-        System.out.println(RAYA);
+        System.out.println(t);
+        System.out.println("==================================================");
     }
 }

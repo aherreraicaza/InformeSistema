@@ -4,124 +4,157 @@ Antuan Herrera Icaza ·DAM2 · CPR Daniel Castelao · curso 2026-2027
 
 ## El programa
 
-Hice una clase `InformeSistema` que cuando se ejecuta imprime por pantalla un montón de datos del sistema. Lo que hace, resumido:
+He hecho una clase `InformeSistema` que cuando se ejecuta imprime en pantalla un montón de datos del sistema. Hace esto:
 
-- Dice los **procesadores** que ve la JVM (con `Runtime.availableProcessors()`).
-- **Memoria en MiB**: total reservada, libre, en uso y máxima, con el porcentaje de memoria en uso sobre el total. La muestra antes y después de reservar 64 MiB.
-- Para reservar los 64 MiB uso `long[] reservado = new long[8 * 1024 * 1024];` (8 millones de long × 8 bytes = 64 MiB). El array lo guardo en una variable y después de la segunda medición imprimo `reservado[0]`, porque si no, el recolector de basura lo puede liberar antes de que mida y el incremento me saldría 0 sin ningún error.
-- **Multiplataforma**: saca el sistema operativo, el separador de rutas y la ruta a `informe.txt` dentro de una carpeta `psp` en mi carpeta personal. Todo esto lo cojo de las propiedades del sistema (`os.name`, `file.separator` y `user.home`), sin escribir a mano ni un separador ni una ruta absoluta.
-- **Propiedades del sistema**: las que empiecen por los prefijos que le pase por línea de comandos. Si no le paso ninguno, usa `os.`, `user.` y `java.version`, y las imprime ordenadas alfabéticamente.
-- Al final se queda **esperando**: muestra "Pulsa INTRO para terminar..." y espera con un `Scanner` sobre `System.in`, para que dé tiempo a localizarlo desde fuera mientras sigue en ejecución.
+- Cuenta los procesadores que ve la JVM (`Runtime.availableProcessors()`).
+- Mide la memoria en MiB (total reservada, libre, en uso y máxima, con su porcentaje) antes y después de reservar 64 MiB.
+- Los 64 MiB los reservo con `long[] reservado = new long[8 * 1024 * 1024];` (8 millones de long × 8 bytes = 64 MiB). Después de la segunda medición imprimo `reservado[0]` para que el recolector de basura no retire el array antes de tiempo; la primera vez que lo probé sin eso el incremento me salía 0 y no sabía por qué.
+- Detecta el sistema operativo y, con las propiedades `os.name`, `file.separator` y `user.home`, arma la ruta de un `informe.txt` dentro de una carpeta `psp` en mi carpeta personal. Nada de rutas escritas a mano.
+- Imprime las propiedades que empiecen por los prefijos que le paso por línea de comandos; si no le paso ninguno, usa `os.`, `user.` y `java.version`, y las ordena alfabéticamente.
+- Al final se queda esperando a que pulse INTRO (con un `Scanner`), para que mientras tanto lo pueda localizar desde otra ventana.
+
+Esta es la salida de una ejecución normal, tal cual:
+
+```
+PROCESADORES
+Disponibles JVM: 16
+(son hilos logicos: con SMT no coinciden con los nucleos fisicos)
+
+MEMORIA - ANTES
+Total reservada: 254 MiB
+Libre: 250 MiB
+En uso: 3 MiB (1 % de la total)
+Maxima (-Xmx): 4056 MiB
+
+MEMORIA - DESPUES DE RESERVAR 64 MIB
+Total reservada: 254 MiB
+Libre: 184 MiB
+En uso: 69 MiB (27 % de la total)
+Maxima (-Xmx): 4056 MiB
+Incremento en uso: 66 MiB
+(el array sigue en memoria: reservado[0] = 0)
+
+SISTEMA
+os.name: Windows 11
+file.separator: "\"
+Ruta construida con las propiedades:
+C:\Users\colve\psp\informe.txt
+
+PROPIEDADES QUE EMPIEZAN POR os. user. java.version
+java.version = 21.0.12.1
+java.version.date = 2026-08-18
+os.arch = amd64
+os.name = Windows 11
+os.version = 10.0
+user.country = ES
+user.dir = C:\Users\colve
+user.home = C:\Users\colve
+user.language = es
+user.name = colve
+user.script =
+user.variant =
+
+PROCESO EN ESPERA
+Buscame desde otra terminal con:
+ps -ef | grep InformeSistema
+Pulsa INTRO para terminar...
+Fin del programa.
+```
 
 ## Las dos ejecuciones
 
-Primero lo ejecuté normal:
+Primero lo ejecuté normal, desde IntelliJ con la configuración por defecto:
 
 ![Ejecución normal](capturas/eje_normal_espera.png)
 
-Y después con `-Xmx128m` para ver cómo cambia la memoria:
+Y después con la memoria limitada. Me hice una configuración de ejecución llamada `InformeSistema128m` en IntelliJ con la opción de VM `-Xmx128m` y la lancé lo mismo:
 
 ![Ejecución con -Xmx128m](capturas/eje_128_espera.png)
 
-## Buscarlo desde fuera con ps
+Las dos se quedan esperando en "Pulsa INTRO para terminar...", que es lo que se ve al final de las capturas.
 
-Con el programa parado en la espera, abrí otra terminal y lo busqué:
+## El proceso, desde fuera
+
+En Windows no hay `ps` ni `grep`, así que lo busqué con PowerShell:
 
 ```
-ps -ef | grep InformeSistema
+Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.CommandLine -match 'InformeSistema' }
 ```
 
-Captura:
+y con `Get-Process -Id <pid>` sobre el PID que salía como padre para ver quién había lanzado el proceso.
 
-![ps del proceso](capturas/ps_normal.png)
+Con el programa en espera y ejecutándolo desde IntelliJ, esto es lo que sale:
 
-Sale el proceso `java ... InformeSistema` con **PID 16057** y **PPID 16054**. El proceso padre es el **bash** del terminal, que es lo normal: cuando escribes `java InformeSistema` en una terminal, el shell es quien crea el proceso del programa y por tanto es su padre.
+![ps desde el IDE](capturas/ps_ide.png)
 
-También hay que repetir la prueba desde el IDE (IntelliJ). En esa ejecución el PPID ya no será el shell del terminal: el proceso que lance el IDE será el padre del programa. Por eso el PPID cambia según desde dónde se lance (terminal → bash; IDE → proceso del IDE o su lanzador).
+El proceso era el PID 26768 y el padre el PID 5136, `idea64`, o sea IntelliJ. Tiene lógica: cuando pulso Run, es IntelliJ el que crea el proceso `java` con mi clase, por eso el padre es suyo. En la línea de comandos no hay ningún `-Xmx`, va con lo que la JVM decide por defecto (4056 MiB).
 
-> Pendiente antes de entregar: ejecutar desde IntelliJ, localizar el proceso mientras espera y guardar/añadir la captura como `capturas/ps_ide.png`. No se debe afirmar que existe esa captura hasta haberla añadido.
-
-Y repetí la búsqueda mientras ejecutaba con `-Xmx128m`:
+Con la configuración `-Xmx128m`, también desde el IDE:
 
 ![ps con -Xmx128m](capturas/ps_128m.png)
 
-Otra vez el padre es el shell del terminal; el PID cambia en cada ejecución, pero eso es normal.
+El PID era 17700 (cambia en cada ejecución, cada vez es un proceso nuevo) y el padre otra vez el 5136 (`idea64`), porque también lo creó IntelliJ. Aquí sí se ve el `-Xmx128m` en la línea de comandos.
 
-### La memoria, antes y después
+Y lanzándolo directamente desde PowerShell, sin tocar el IDE:
 
-Estos son los números que salen:
+![ps desde la terminal](capturas/ps_terminal.png)
 
-| Cifra | Ejecución normal | Con -Xmx128m |
+El PID era 19688 y el padre el 14280, que es `powershell`, la ventana de donde escribí el comando.
+
+Así que el PPID sí cambia según desde dónde se lance: si lo lanza el IDE el padre es `idea64`, y si lo lanza una terminal el padre es esa terminal. El PID cambia siempre porque es un proceso distinto cada vez.
+
+## Los números de la memoria
+
+Comparando las dos ejecuciones:
+
+| | Normal | Con -Xmx128m |
 |---|---|---|
-| Total reservada | antes 20 MiB · después 84 MiB | antes 10 MiB · después 74 MiB |
-| Libre | antes 17 MiB · después 15 MiB | antes 8 MiB · después 7 MiB |
-| En uso | antes 2 MiB (11 %) · después 68 MiB (81 %) | antes 1 MiB (11 %) · después 66 MiB (90 %) |
-| Máxima (-Xmx) | 3942 MiB | 128 MiB |
+| Total reservada (antes → después) | 254 → 254 MiB | 128 → 128 MiB |
+| Libre (antes → después) | 250 → 184 MiB | 125 → 61 MiB |
+| En uso (antes → después) | 3 MiB (1 %) → 69 MiB (27 %) | 2 MiB (2 %) → 66 MiB (52 %) |
+| Máxima (-Xmx) | 4056 MiB | 128 MiB |
+| Incremento en uso | 66 MiB | 63 MiB |
 
-Lo que veo:
+Lo que cambia es la **máxima**: con `-Xmx128m` le digo a la JVM que como mucho reserve 128 MiB, y sin la opción la máxima la pone ella (4056 MiB). La **total reservada** baja también (254 → 128) porque con el tope en 128 la JVM no puede reservar más. La **libre** y la de **en uso** cambian por lo mismo y porque el array de 64 MiB ocupa sitio. El porcentaje sube mucho más con 128 MiB: el mismo array de 64 MiB es el 52 % de un heap de 128 y solo el 27 % de uno de 254. El **incremento** sale parecido (66 y 63 MiB) porque en los dos casos reservo lo mismo; la diferencia de un par de megas es lo que la JVM gasta en sus cosas al arrancar.
 
-- **La máxima** es la única que cambia directamente por el comando: con `-Xmx128m` la JVM tiene el tope en 128 MiB y sin él me deja llegar hasta 3942 MiB.
-- **La total reservada** también cambia: sin `-Xmx` la JVM reserva 20 MiB al arrancar; con un máximo tan pequeño no reserva tanto al principio (10 MiB) para no quedarse tan justa. Cuando reservo el array, el heap va creciendo para poder alojarlo (84 y 74 MiB).
-- **La libre** baja siempre después de la reserva, porque el array ocupa sitio.
-- **La de uso** sube de 2 a 68 (y de 1 a 66), es decir el incremento es más o menos lo que reservé (64 MiB) más un pelín de overhead de la JVM.
-- El **porcentaje en uso sobre el total** se nota mucho más con `-Xmx128m` (90 % frente al 81 %): 64 MiB pesan mucho más en un heap de 74 MiB que en uno de 84.
+## La ruta multiplataforma
 
-La cifra que no cambia apenas es el **incremento** (66 y 65 MiB), porque en los dos casos reservo lo mismo.
-
-### La ruta multiplataforma
-
-En mi máquina (Linux) el programa genera:
+En mi equipo el programa saca esta ruta:
 
 ```
-/home/dam26/psp/informe.txt
+C:\Users\colve\psp\informe.txt
 ```
 
-En Windows habría generado algo así:
+En Linux sacaría esta:
 
 ```
-C:\Users\dam26\psp\informe.txt
+/home/colve/psp/informe.txt
 ```
 
-La diferencia está en las propiedades del sistema: `user.home` vale `/home/dam26` en Linux y `C:\Users\dam26` en Windows, y `file.separator` es `/` o `\`. Como la ruta se construye siempre con esas propiedades y ninguna parte está escrita a mano, el mismo código vale para los dos.
+No la he podido probar en Linux porque en casa solo tengo Windows, pero en el código no hay ninguna ruta escrita a mano: se monta con `user.home` (aquí `C:\Users\colve`, en Linux `/home/colve`) y con `file.separator` (`\` o `/`), así que la misma clase genera la ruta que toca en cada sistema.
 
-## Apartado 3: qué programación encaja en cada caso
+## Apartado 3
 
 **a) Un servidor web que atiende 500 peticiones a la vez en una máquina de 8 núcleos.**
 
-Programación **concurrente**, y también un poco de paralela a nivel de hilos.
+Va con programación **concurrente** (y algo de paralela cuando hay núcleos libres). Son 500 peticiones y solo 8 núcleos, así que no se atienden todas de verdad a la vez: se van intercalando, cada petición es una tarea que casi siempre está esperando a la red o a la base de datos. El inconveniente es que esos hilos comparten datos del servidor y hay que sincronizar el acceso, que es de donde salen las condiciones de carrera.
 
-Por qué: son 500 peticiones simultáneas y solo 8 núcleos: no se pueden hacer 500 cosas a la vez, así que se van intercalando en el tiempo (el servidor va atendiendo unas y otras; normalmente reparte el trabajo en un pool de hilos). En paralelo actúa cuando en un momento dado hay más de un núcleo libre y varias peticiones listas, que se ejecutan de verdad a la vez.
+**b) Renderizar una película de animación en un plazo de tres meses.**
 
-Inconveniente concreto: si metes un hilo por petición, cada hilo se come su memoria de pila y el cambio de contexto empieza a quitar rendimiento; además, todos comparten datos del servidor y hay que protegerlos con sincronización, que si se hace mal provoca condiciones de carrera.
-
-**b) Renderizar una película de animación en tres meses.**
-
-Programación **paralela**, y distribuida si se usan varias máquinas.
-
-Por qué: un render se puede cortar en trozos independientes (frames o zonas del frame), así que en una máquina con muchos núcleos cada núcleo va calculando uno a la vez y el tiempo total baja. Si en vez de una máquina usan una granja de render, entonces además es **distribuida**, porque trabajan varias máquinas conectadas por red como si fueran una.
-
-Inconveniente concreto: no escala el 100 %, porque siempre hay una parte que no se puede dividir (planificar, escribir los frames, sincronizar) que marca el límite (la ley de Amdahl). En el caso distribuido se suman el coste de las máquinas y los fallos de la red.
+Programación **paralela** (y **distribuida** si se usan varias máquinas). Un render se puede trocear en frames, así que en una máquina con varios núcleos cada núcleo puede calcular uno a la vez y el tiempo total baja. Las productoras usan granjas de servidores y ahí ya es distribuido. El inconveniente: siempre hay una parte que no se puede repartir (organizar las tareas, juntar el resultado), y eso limita lo que se gana; en el caso distribuido se suman los fallos de red y el coste de las máquinas.
 
 **c) Una app de móvil que descarga un fichero mientras sigues navegando.**
 
-Programación **concurrente**.
-
-Por qué: son dos tareas del mismo dispositivo que coexisten en el tiempo: la descarga va en un hilo de fondo mientras el hilo principal sigue atendiendo la interfaz. No se busca acabar antes, sino que la app siga respondiendo mientras otra cosa avanza; se van intercalando las instrucciones.
-
-Inconveniente concreto: los dos hilos comparten datos (el fichero que se está bajando, el progreso...) y si no los sincronizas bien te salen condiciones de carrera; además, procesos en segundo plano gastan batería.
+Programación **concurrente**. Son dos tareas del mismo móvil que coexisten: la descarga va en un hilo de fondo mientras la interfaz sigue respondiendo; las instrucciones de las dos se van intercalando. El objetivo no es acabar antes, es que la app no se quede bloqueada. El inconveniente: hay que coordinar los dos hilos para compartir bien los datos (el fichero, el progreso) y un proceso en segundo plano gasta más batería.
 
 **d) Un cálculo que no cabe en la RAM de un solo equipo.**
 
-Programación **distribuida**.
-
-Por qué: los datos no entran en la memoria de una máquina, así que no sirve de nada repartir los hilos entre núcleos de un mismo equipo: te quedas sin RAM igualmente. Los datos hay que repartirlos entre varias máquinas conectadas por red, cada una con su memoria, que se comunican por mensajes y trabajan como una sola.
-
-Inconveniente concreto: la comunicación por red añade latencia y hay que aguantar que un nodo pueda fallar, y si el problema no está bien dividido, mover los datos entre nodos puede costar más que calcular.
+Programación **distribuida**. Si los datos no caben en la memoria de una máquina, no sirve de nada repartir hilos entre los núcleos del mismo equipo: te sigues quedando sin RAM. Los datos se reparten entre varias máquinas conectadas por red, cada una con su memoria, que se comunican por mensajes. El inconveniente: la red es mucho más lenta que la memoria local, así que hay que dividir bien el problema para que los nodos no se estén pasando datos todo el rato, y además asumir que algún nodo puede fallar.
 
 ## Estructura
 
 ```
-├── README.md
-├── src/InformeSistema.java
-└── capturas/
+README.md
+src/InformeSistema.java
+capturas/
 ```
