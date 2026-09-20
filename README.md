@@ -78,28 +78,28 @@ Las dos se quedan esperando en "Pulsa INTRO para terminar...", que es lo que se 
 En Windows no hay `ps` ni `grep`, así que lo busqué con PowerShell:
 
 ```
-Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.CommandLine -match 'InformeSistema' }
+Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.CommandLine -match 'InformeSistema' -and $_.CommandLine -notmatch 'jps|BuildMain|Launcher|headless' }
 ```
 
-y con `Get-Process -Id <pid>` sobre el PID que salía como padre para ver quién había lanzado el proceso.
+Filtro por `InformeSistema` en la línea de comandos y descarto los procesos que son de IntelliJ (el `BuildMain` sale siempre cuando le das a Run y no es mi programa). Después, con `Get-Process -Id <pid>` sobre el PID que salía como padre, miro quién ha lanzado el proceso.
 
 Con el programa en espera y ejecutándolo desde IntelliJ, esto es lo que sale:
 
 ![ps desde el IDE](capturas/ps_ide.png)
 
-El proceso era el PID 26768 y el padre el PID 5136, `idea64`, o sea IntelliJ. Tiene lógica: cuando le doy a Run, es IntelliJ el que crea el proceso `java` con mi clase, por eso el padre es suyo. En la línea de comandos no hay ningún `-Xmx`, va con lo que la JVM decide por defecto (4056 MiB).
+El proceso era el PID 9164 y el padre el PID 5136, `idea64`, o sea IntelliJ. Tiene lógica: cuando le doy a Run, es IntelliJ el que crea el proceso `java` con mi clase, por eso el padre es suyo. En la terminal que se ve al fondo (la que trae IntelliJ integrada, con la pestaña `Terminal`) escribo las consultas mientras el programa espera. En la línea de comandos no hay ningún `-Xmx`, va con lo que la JVM decide por defecto (4056 MiB).
 
 Con la configuración `-Xmx128m`, también desde el IDE:
 
 ![ps con -Xmx128m](capturas/ps_128m.png)
 
-El PID era 17700 (cambia en cada ejecución, cada vez es un proceso nuevo) y el padre otra vez el 5136 (`idea64`), porque también lo creó IntelliJ. Aquí sí se ve el `-Xmx128m` en la línea de comandos. Me pasó una cosa con esta prueba: la primera vez que ejecuté la de 128 no veía el `-Xmx128m` por ningún lado en la lista de procesos, y era porque sin querer se la estaba aplicando a la configuración equivocada en IntelliJ. Hasta que me di cuenta de cuál era la seleccionada no salía bien.
+El PID era 23072 (cambia en cada ejecución, cada vez es un proceso nuevo) y el padre otra vez el 5136 (`idea64`), porque también lo creó IntelliJ. Aquí sí se ve el `-Xmx128m` en la línea de comandos. Me pasó una cosa con esta prueba: la primera vez que ejecuté la de 128 no veía el `-Xmx128m` por ningún lado en la lista de procesos, y era porque sin querer se la estaba aplicando a la configuración equivocada en IntelliJ. Hasta que me di cuenta de cuál era la seleccionada no salía bien.
 
-Y lanzándolo directamente desde PowerShell, sin tocar el IDE:
+Y lanzándolo desde la propia terminal de IntelliJ (sin darle a Run, escribiendo el comando a mano):
 
 ![ps desde la terminal](capturas/ps_terminal.png)
 
-El PID era 19688 y el padre el 14280, que es `powershell`, la ventana de donde escribí el comando.
+En la primera pestaña de la terminal dejo el programa esperando y abro una segunda (`Local (2)`) para buscar el proceso. El PID era 16296 y el padre el 12392, que es `powershell`, la sesión donde escribí el comando: la terminal de IntelliJ es un PowerShell y es ese PowerShell el que crea el proceso `java`.
 
 Así que el PPID sí cambia según desde dónde se lance: si lo lanza el IDE el padre es `idea64`, y si lo lanza una terminal el padre es esa terminal. El PID cambia siempre porque es un proceso distinto cada vez.
 
